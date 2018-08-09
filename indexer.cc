@@ -5,7 +5,8 @@ const char MAGIC_BAD[] = "BAD MEOW"; // first sizeof(off_t) bytes
 const char MAGIC_GOOD[] = "GOODMEOW"; // first sizeof(off_t) bytes
 const long LOGAB = CHAR_BIT, AB = 1L << LOGAB;
 
-const char *listen_path = "/tmp/search.sock";
+//const char *listen_path = "/tmp/search.sock";
+long listen_port = 31223;
 const pthread_t main_thread = pthread_self();
 vector<const char *> data_dir;
 string data_suffix = ".ap";
@@ -1433,6 +1434,7 @@ quit:
   void run() {
     signal(SIGPIPE, SIG_IGN); // SIGPIPE while writing to clients
 
+    /*
     int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sockfd < 0)
       err_exit(EX_OSERR, "socket");
@@ -1446,6 +1448,31 @@ quit:
     if (listen(sockfd, 1) < 0)
       err_exit(EX_OSERR, "listen");
     log_status("listening on %s", listen_path);
+    */
+
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+      err_exit(EX_OSERR, "socket");
+    }
+
+    int enable = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0) {
+      err_exit(EX_OSERR, "setsockopt");
+    }
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(listen_port);
+
+    if (bind(sockfd, (struct sockaddr *) &address,
+          sizeof(address)) < 0) {
+      err_exit(EX_OSERR, "bind");
+    }
+
+    if (listen(sockfd, 1) < 0) {
+      err_exit(EX_OSERR, "listen");
+    }
+    log_status("listening on port %d", listen_port);
 
     // load existing
     if (opt_inotify)
@@ -1515,7 +1542,7 @@ int main(int argc, char *argv[])
     {"indexer-limit",       required_argument, 0,   'P'},
     {"index-suffix",        required_argument, 0,   'S'},
     {"oneshot",             no_argument,       0,   'o'},
-    {"path",                required_argument, 0,   'p'},
+    {"port",                required_argument, 0,   'p'},
     {"recursive",           no_argument,       0,   'r'},
     {"request-count",       required_argument, 0,   'c'},
     {"request-timeout",     required_argument, 0,   't'},
@@ -1562,7 +1589,7 @@ int main(int argc, char *argv[])
       opt_inotify = false;
       break;
     case 'p':
-      listen_path = optarg;
+      listen_port = get_long(optarg);
       break;
     case 'P':
       indexer_limit = get_long(optarg);
