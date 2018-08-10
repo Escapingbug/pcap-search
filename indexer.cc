@@ -17,7 +17,7 @@ long search_limit = 20;
 long fmindex_sample_rate = 32;
 long indexer_limit = 0;
 long rrr_sample_rate = 8;
-double request_timeout = 1;
+double request_timeout = 1000;
 long request_count = -1;
 bool opt_force_rebuild = false;
 bool opt_inotify = true;
@@ -1320,14 +1320,16 @@ quit:;
     fds.fd = connfd;
     fds.events = POLLIN;
 
+    
     for(;;) {
+	    /*
       int ready = ppoll(&fds, 1, &timeout, NULL);
       if (ready < 0) {
         if (errno == EINTR) continue;
         goto quit;
       }
       if (! ready) goto quit; // timeout
-      ssize_t t = read(connfd, buf+nread, sizeof buf-nread);
+      */ssize_t t = read(connfd, buf+nread, sizeof buf-nread);
       if (t < 0) goto quit;
       if (! t) break;
       nread += t;
